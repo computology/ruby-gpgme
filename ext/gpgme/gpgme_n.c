@@ -109,6 +109,11 @@
 #define UNWRAP_GPGME_TRUST_ITEM(vitem, item)			\
   Data_Get_Struct(vitem, struct _gpgme_trust_item, item)
 
+#ifdef HAVE_RUBY_ENCODING_H
+#include <ruby/encoding.h>
+static rb_encoding *utf8Encoding;
+#endif
+
 static VALUE cEngineInfo,
   cCtx,
   cData,
@@ -285,6 +290,14 @@ write_cb (void *handle, const void *buffer, size_t size)
   vcbs = RARRAY_PTR(vcb)[0];
   vhook_value = RARRAY_PTR(vcb)[1];
   vbuffer = rb_str_new (buffer, size);
+
+#ifdef HAVE_RUBY_ENCODING_H
+    rb_encoding *default_internal_enc = rb_default_internal_encoding();
+    rb_enc_associate(vbuffer, utf8Encoding);
+    if (default_internal_enc) {
+      vbuffer = rb_str_export_to_enc(vbuffer, default_internal_enc);
+    }
+#endif
 
   vnwrite = rb_funcall (vcbs, rb_intern ("write"), 3,
 			vhook_value, vbuffer, LONG2NUM(size));
@@ -2624,5 +2637,9 @@ Init_gpgme_n (void)
 #ifdef GPGME_ENCRYPT_NO_ENCRYPT_TO
   rb_define_const (mGPGME, "GPGME_ENCRYPT_NO_ENCRYPT_TO",
 		   INT2FIX(GPGME_ENCRYPT_NO_ENCRYPT_TO));
+#endif
+
+#ifdef HAVE_RUBY_ENCODING_H
+  utf8Encoding = rb_utf8_encoding();
 #endif
 }
